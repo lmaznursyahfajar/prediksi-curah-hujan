@@ -80,8 +80,4 @@ elif page == "🚨  Analisis Bencana":
     from pages import disaster
     disaster.render(df, gdf)
 
-elif page == "📊  Statistik Curah Hujan":
-    from pages import analysis
-    analysis.render(df)
-
 render_footer()
