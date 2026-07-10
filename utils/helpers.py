@@ -57,18 +57,27 @@ def render_sidebar() -> str:
 
         st.markdown("<div style='padding:0 6px'>", unsafe_allow_html=True)
 
-        page = st.radio(
-            "navigasi",
-            options=[
-                "🏠  Beranda",
-                "📡  Live Monitoring",
-                "🤖  Prediksi Curah Hujan Ekstrem",
-                "🌾  Analisis Pertanian",
-                "🚨  Analisis Bencana",
-                "📊  Statistik Curah Hujan",
-            ],
-            label_visibility="collapsed",
-        )
+        # Inisialisasi halaman pertama
+        if "page" not in st.session_state:
+            st.session_state.page = "🏠  Beranda"
+
+        pages = [
+            "🏠  Beranda",
+            "📡  Live Monitoring",
+            "🤖  Prediksi Curah Hujan Ekstrem",
+            "🌾  Analisis Pertanian",
+            "🚨  Analisis Bencana",
+        ]
+
+        for p in pages:
+            if st.button(
+                p,
+                use_container_width=True,
+                type="primary" if st.session_state.page == p else "secondary",
+            ):
+                st.session_state.page = p
+
+        page = st.session_state.page
 
         st.markdown("<div class='gradient-divider'></div>", unsafe_allow_html=True)
 
