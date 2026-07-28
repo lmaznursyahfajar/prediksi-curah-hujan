@@ -123,12 +123,12 @@ def render(df: pd.DataFrame, gdf):
                 x=df_b["kejadian_banjir"], y=df_b["kecamatan"], orientation="h",
                 marker=dict(color=cmap, opacity=0.85),
                 text=df_b["kejadian_banjir"].astype(str), textposition="outside",
-                textfont=dict(color="#e2e8f0", size=10),
+                textfont=dict(color="#000000", size=10),
                 hovertemplate="<b>%{y}</b><br>Banjir: %{x} kejadian<extra></extra>"))
             fig.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
                 height=520, font=_F, margin=_M, hovermode="y unified",
                 xaxis=dict(**_G, title="Jumlah Kejadian"), yaxis=_G, showlegend=False,
-                title=dict(text="Frekuensi Banjir (2018–2025)", font=dict(size=13,color="#e2e8f0"), x=0))
+                title=dict(text="Frekuensi Banjir (2018–2025)", font=dict(size=13,color="#000000"), x=0))
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -142,12 +142,12 @@ def render(df: pd.DataFrame, gdf):
                 x=df_l["kejadian_longsor"], y=df_l["kecamatan"], orientation="h",
                 marker=dict(color=cmap2, opacity=0.85),
                 text=df_l["kejadian_longsor"].astype(str), textposition="outside",
-                textfont=dict(color="#e2e8f0", size=10),
+                textfont=dict(color="#000000", size=10),
                 hovertemplate="<b>%{y}</b><br>Longsor: %{x} kejadian<extra></extra>"))
             fig2.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
                 height=520, font=_F, margin=_M, hovermode="y unified",
                 xaxis=dict(**_G, title="Jumlah Kejadian"), yaxis=_G, showlegend=False,
-                title=dict(text="Frekuensi Longsor (2018–2025)", font=dict(size=13,color="#e2e8f0"), x=0))
+                title=dict(text="Frekuensi Longsor (2018–2025)", font=dict(size=13,color="#000000"), x=0))
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -167,7 +167,7 @@ def render(df: pd.DataFrame, gdf):
             height=520, barmode="stack", font=_F, margin=_M, hovermode="y unified",
             legend=dict(bgcolor="rgba(7,20,40,.8)",bordercolor="rgba(59,130,246,.2)",borderwidth=1),
             xaxis=dict(**_G, title="Jumlah Kejadian"), yaxis=_G,
-            title=dict(text="Total Kejadian Bencana per Kecamatan",font=dict(size=13,color="#e2e8f0"),x=0))
+            title=dict(text="Total Kejadian Bencana per Kecamatan",font=dict(size=13,color="#000000"),x=0))
         st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -184,12 +184,12 @@ def render(df: pd.DataFrame, gdf):
                 x=df_tb["lingkungan_banjir_ha"], y=df_tb["kecamatan"], orientation="h",
                 marker=dict(color=cmap_b, opacity=0.85),
                 text=[f"{v:,.0f}" for v in df_tb["lingkungan_banjir_ha"]], textposition="outside",
-                textfont=dict(color="#e2e8f0", size=10),
+                textfont=dict(color="#000000", size=10),
                 hovertemplate="<b>%{y}</b><br>Terpapar Banjir: %{x:,.0f} ha<extra></extra>"))
             fig4.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
                 height=500, font=_F, margin=_M, hovermode="y unified",
                 xaxis=dict(**_G, title="Luas (ha)"), yaxis=_G, showlegend=False,
-                title=dict(text="Terpapar Banjir (Ha)",font=dict(size=13,color="#e2e8f0"),x=0))
+                title=dict(text="Terpapar Banjir (Ha)",font=dict(size=13,color="#000000"),x=0))
             st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -203,12 +203,12 @@ def render(df: pd.DataFrame, gdf):
                 x=df_tl["lingkungan_longsor_ha"], y=df_tl["kecamatan"], orientation="h",
                 marker=dict(color=cmap_l, opacity=0.85),
                 text=[f"{v:,.0f}" for v in df_tl["lingkungan_longsor_ha"]], textposition="outside",
-                textfont=dict(color="#e2e8f0", size=10),
+                textfont=dict(color="#000000", size=10),
                 hovertemplate="<b>%{y}</b><br>Terpapar Longsor: %{x:,.0f} ha<extra></extra>"))
             fig5.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
                 height=500, font=_F, margin=_M, hovermode="y unified",
                 xaxis=dict(**_G, title="Luas (ha)"), yaxis=_G, showlegend=False,
-                title=dict(text="Terpapar Longsor (Ha)",font=dict(size=13,color="#e2e8f0"),x=0))
+                title=dict(text="Terpapar Longsor (Ha)",font=dict(size=13,color="#000000"),x=0))
             st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar":False})
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -352,7 +352,7 @@ def render(df: pd.DataFrame, gdf):
             title=dict(
                 text=f"Tren Kejadian Bencana ({selected})",
                 x=0,
-                font=dict(size=14, color="#e2e8f0")
+                font=dict(size=14, color="#000000")
             ),
 
             xaxis=dict(
@@ -364,7 +364,7 @@ def render(df: pd.DataFrame, gdf):
 
             yaxis=dict(
                 **_G,
-                title="Jumlah Desa/Kelurahan Terdampak"
+                title="Jumlah Kejadian"
             ),
 
             legend=dict(
@@ -383,11 +383,12 @@ def render(df: pd.DataFrame, gdf):
         )
 
         st.markdown("</div>", unsafe_allow_html=True)
-    # ── Tab 5: Rekomendasi ────────────────────────────────────
+# ── Tab 5: Rekomendasi ────────────────────────────────────
     with tab5:
         st.markdown("<div style='margin-top:16px'></div>", unsafe_allow_html=True)
         section_header("🤖","Sistem Rekomendasi Mitigasi Bencana",
                        f"Berdasarkan curah hujan {rain:.1f} mm & prakiraan 7 hari")
+        
         kec_list = sorted(df_dis["kecamatan"].tolist())
         col_s, col_r = st.columns([2,1])
         with col_s:
@@ -395,33 +396,48 @@ def render(df: pd.DataFrame, gdf):
         with col_r:
             sim_rain = st.number_input("💧 Simulasi Curah Hujan (mm)",
                                        min_value=0.0, max_value=300.0, value=float(rain), step=5.0)
+        
         plan = generate_recommendations(sel_kec, sim_rain, avg_f7)
         rc = {"NORMAL":"#22c55e","WASPADA":"#eab308","SIAGA":"#f97316",
               "BAHAYA":"#ef4444","BENCANA":"#7f1d1d"}.get(plan.risk_level,"#3b82f6")
+        
+        # 1. ALERT CARD (Tampilan dipertegas, background light green/red, teks gelap)
         st.markdown(f"""
-        <div style="background:{rc}15;border:1px solid {rc}44;border-radius:16px;
-                    padding:18px 22px;margin:16px 0;position:relative;overflow:hidden">
-            <div style="position:absolute;top:0;left:0;right:0;height:2px;background:{rc}"></div>
-            <div style="display:flex;align-items:center;gap:12px">
-                <div style="font-size:28px">🚨</div>
-                <div>
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <div style="background:{rc}10;border:1px solid {rc}33;border-radius:12px;
+                    padding:18px 22px;margin:16px 0;position:relative;overflow:hidden;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="position:absolute;top:0;left:0;bottom:0;width:5px;background:{rc}"></div>
+            <div style="display:flex;align-items:center;gap:16px">
+                <div style="font-size:32px">🚨</div>
+                <div style="flex:1">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
                         <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;
-                                     font-size:16px;color:#e2e8f0">{sel_kec}</span>
-                        <span style="background:{rc}22;color:{rc};border:1px solid {rc}44;
-                                     border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700">{plan.risk_level}</span>
+                                     font-size:17px;color:#0f172a">{sel_kec}</span>
+                        <span style="background:{rc}15;color:{rc};border:1px solid {rc}40;
+                                     border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;
+                                     letter-spacing:0.05em;">{plan.risk_level}</span>
                     </div>
-                    <p style="font-size:13px;color:#94a3b8;margin:0">{plan.alert_message}</p>
+                    <p style="font-size:14px;color:#334155;margin:0;line-height:1.5;font-weight:500;">
+                        {plan.alert_message}
+                    </p>
                 </div>
             </div>
         </div>""", unsafe_allow_html=True)
+        
+        # 2. INSIGHT CUACA (Background biru pastel, label biru tegas, teks hitam slate)
         st.markdown(f"""
-        <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);
-                    border-radius:12px;padding:14px 18px;margin-bottom:16px">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;
-                        color:#60a5fa;font-weight:600;margin-bottom:6px">🧠 Insight Cuaca</div>
-            <p style="font-size:13px;color:#94a3b8;margin:0;line-height:1.7">{plan.smart_insight}</p>
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;
+                    padding:16px 20px;margin-bottom:24px;box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <span style="font-size:14px">🧠</span>
+                <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;
+                             color:#0369a1;font-weight:800;">Insight Cuaca</span>
+            </div>
+            <p style="font-size:14px;color:#0f172a;margin:0;line-height:1.6;font-weight:500;">
+                {plan.smart_insight}
+            </p>
         </div>""", unsafe_allow_html=True)
+        
         section_header("📋","Rekomendasi Aksi Mitigasi","Urutan prioritas")
         render_mitigation_cards(plan)
 
