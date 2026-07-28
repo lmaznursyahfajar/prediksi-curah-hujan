@@ -90,13 +90,13 @@ def render(df: pd.DataFrame, gdf):
                             colorscale=[[0,"#064e3b"],[.5,"#10b981"],[1,"#6ee7b7"]],
                             showscale=False),
                 text=[f"{v:,.0f}" for v in df_s["luas_sawah"]],
-                textposition="outside", textfont=dict(color="#e2e8f0", size=10),
+                textposition="outside", textfont=dict(color="#000000", size=10),
                 hovertemplate="<b>%{y}</b><br>Luas: %{x:,.0f} ha<extra></extra>",
             ))
             fig.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
                 height=480, font=_F, margin=_M, hovermode="y unified",
                 xaxis=dict(**_G, title="Luas (ha)"), yaxis=_G,
-                title=dict(text="Luas Sawah (ha)", font=dict(size=13, color="#e2e8f0"), x=0))
+                title=dict(text="Luas Sawah (ha)", font=dict(size=13, color="#000000"), x=0))
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -110,13 +110,13 @@ def render(df: pd.DataFrame, gdf):
                             colorscale=[[0,"#1e3a5f"],[.5,"#3b82f6"],[1,"#93c5fd"]],
                             showscale=False),
                 text=[f"{v:,.0f}" for v in df_p["produksi_padi"]],
-                textposition="outside", textfont=dict(color="#e2e8f0", size=10),
+                textposition="outside", textfont=dict(color="#000000", size=10),
                 hovertemplate="<b>%{y}</b><br>Produksi: %{x:,.0f} ton<extra></extra>",
             ))
             fig2.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
                 height=480, font=_F, margin=_M, hovermode="y unified",
                 xaxis=dict(**_G, title="Produksi (ton)"), yaxis=_G,
-                title=dict(text="Produksi Padi (ton)", font=dict(size=13, color="#e2e8f0"), x=0))
+                title=dict(text="Produksi Padi (ton)", font=dict(size=13, color="#000000"), x=0))
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -129,7 +129,7 @@ def render(df: pd.DataFrame, gdf):
             x=df_k["produktivitas"], y=df_k["kecamatan"], orientation="h",
             marker=dict(color=colors_k, opacity=0.85),
             text=[f"{v:.2f}" for v in df_k["produktivitas"]],
-            textposition="outside", textfont=dict(color="#e2e8f0", size=10),
+            textposition="outside", textfont=dict(color="#000000", size=10),
             hovertemplate="<b>%{y}</b><br>Produktivitas: %{x:.2f} ton/ha<extra></extra>",
         ))
     avg_k = df_agri["produktivitas"].mean()
@@ -137,9 +137,9 @@ def render(df: pd.DataFrame, gdf):
                        annotation_text=f"Rata-rata {avg_k:.2f}", annotation_font_color="#06b6d4")
     fig3.update_layout(template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
             height=480, font=_F, margin=_M, hovermode="y unified",
-            xaxis=dict(**_G, title="Produktivitas (ton/ha)", range=[3.5, 5.8]),
+            xaxis=dict(**_G, title="Produktivitas (ton/ha)", range=[2, 9]),
             yaxis=_G, showlegend=False,
-            title=dict(text="Produktivitas per Kecamatan", font=dict(size=13, color="#e2e8f0"), x=0))
+            title=dict(text="Produktivitas per Kecamatan", font=dict(size=13, color="#000000"), x=0))
     st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -195,35 +195,6 @@ def render(df: pd.DataFrame, gdf):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="glass-card" style="margin-top:16px">', unsafe_allow_html=True)
-    _shdr("📅", "Produksi vs Curah Hujan Bulanan")
-
-    months = df_monthly["Bulan"].tolist()
-    fig4 = go.Figure()
-    fig4.add_trace(go.Bar(
-            x=months, y=df_monthly["Produksi_Ton"], name="Produksi (ton)",
-            marker_color="rgba(16,185,129,.75)",
-            hovertemplate="<b>%{x}</b><br>Produksi: %{y:,.0f} ton<extra></extra>",
-        ))
-    fig4.add_trace(go.Scatter(
-            x=months, y=df_monthly["Curah_Hujan_Avg"], name="Curah Hujan (mm)",
-            mode="lines+markers", yaxis="y2",
-            line=dict(color="#3b82f6", width=2.5),
-            marker=dict(size=7, color="#3b82f6"),
-            hovertemplate="<b>%{x}</b><br>Hujan: %{y:.0f} mm<extra></extra>",
-        ))
-    fig4.update_layout(
-            template="plotly_dark", paper_bgcolor=CHART_BG, plot_bgcolor=CHART_BG,
-            height=380, hovermode="x unified", font=_F, margin=_M,
-            legend=dict(bgcolor="rgba(7,20,40,.8)", bordercolor="rgba(59,130,246,.2)", borderwidth=1),
-            yaxis=dict(**_G, title="Produksi (ton)"),
-            yaxis2=dict(**_G, title="Curah Hujan (mm)", overlaying="y", side="right"),
-            title=dict(text="Pola Musiman Produksi vs Curah Hujan",
-                       font=dict(size=13, color="#e2e8f0"), x=0),
-        )
-    st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
-    st.markdown("</div>", unsafe_allow_html=True)
-
         # Pie chart
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     _shdr("📊", "Proporsi Luas Sawah per Kecamatan")
@@ -242,7 +213,7 @@ def render(df: pd.DataFrame, gdf):
     fig5.update_layout(
             template="plotly_dark", paper_bgcolor=CHART_BG, height=360,
             margin=dict(l=8, r=8, t=40, b=8),
-            title=dict(text="Proporsi Luas Sawah (8 Terbesar)", font=dict(size=13, color="#e2e8f0"), x=0),
+            title=dict(text="Proporsi Luas Sawah (8 Terbesar)", font=dict(size=13, color="#000000"), x=0),
         )
     st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
