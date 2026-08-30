@@ -43,13 +43,18 @@ INFERENCE_CONFIG = {
 }
 
 # ── Rainfall Thresholds ──────────────────────────────────────
+# SUMBER TUNGGAL KLASIFIKASI CURAH HUJAN — dipakai di SELURUH platform
+# (monitoring, prediksi, pertanian, bencana, rekomendasi mitigasi).
+# Selaras dengan Tabel 5.20 & sub-bab 2.1.13/5.14.1 laporan skripsi:
+# adaptasi kategori operasional BMKG + status kedaruratan BNPB.
+# "code" = kunci status (dipakai services/recommendation.py & logika internal)
+# "label" = teks tampilan (dipakai UI/kartu/badge)
 RAIN_LEVELS = [
-    {"label":"Tidak Hujan",   "min":0,    "max":0.1,  "color":"#22c55e","icon":"☀️","risk":"Rendah",  "css":"low"},
-    {"label":"Hujan Ringan",  "min":0.1,  "max":5,    "color":"#84cc16","icon":"🌦️","risk":"Rendah",  "css":"low"},
-    {"label":"Hujan Sedang",  "min":5,    "max":20,   "color":"#eab308","icon":"🌧️","risk":"Sedang",  "css":"medium"},
-    {"label":"Hujan Lebat",   "min":20,   "max":50,   "color":"#f97316","icon":"⛈️","risk":"Tinggi",  "css":"high"},
-    {"label":"Hujan Ekstrem", "min":50,   "max":100,  "color":"#ef4444","icon":"🌊","risk":"Kritis",  "css":"critical"},
-    {"label":"Hujan Katastrofik","min":100,"max":9999,"color":"#7f1d1d","icon":"🆘","risk":"Bencana", "css":"critical"},
+    {"code":"NORMAL",  "label":"Normal",  "min":0,   "max":10,   "color":"#22c55e","icon":"☀️","risk":"Rendah", "css":"low"},
+    {"code":"WASPADA", "label":"Waspada", "min":10,  "max":30,   "color":"#eab308","icon":"🌦️","risk":"Sedang", "css":"medium"},
+    {"code":"SIAGA",   "label":"Siaga",   "min":30,  "max":50,   "color":"#f97316","icon":"⛈️","risk":"Tinggi", "css":"high"},
+    {"code":"BAHAYA",  "label":"Bahaya",  "min":50,  "max":100,  "color":"#ef4444","icon":"🌊","risk":"Kritis", "css":"critical"},
+    {"code":"BENCANA", "label":"Bencana", "min":100, "max":9999, "color":"#7f1d1d","icon":"🆘","risk":"Bencana","css":"critical"},
 ]
 
 # ── Agriculture Thresholds ───────────────────────────────────
