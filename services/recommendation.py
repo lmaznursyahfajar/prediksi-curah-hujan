@@ -1,5 +1,8 @@
 # ============================================================
 # services/recommendation.py — AI Mitigation Recommendation Engine
+# Rekomendasi dibentuk murni berdasarkan STATUS LEVEL klasifikasi
+# curah hujan (NORMAL / WASPADA / SIAGA / BAHAYA / BENCANA),
+# selaras dengan Bab V (5.14.1–5.14.2) laporan skripsi.
 # ============================================================
 
 from dataclasses import dataclass, field
@@ -9,9 +12,49 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from config import RAIN_LEVELS
 
 
+# ── Urutan resmi status level — DIAMBIL LANGSUNG dari config.RAIN_LEVELS,
+#    yang merupakan satu-satunya sumber kebenaran klasifikasi curah hujan
+#    di seluruh platform (acuan: BMKG kategori operasional + BNPB status
+#    kedaruratan bencana, lihat sub-bab 2.1.13 & Tabel 5.20 laporan). ──
+LEVELS = [lvl["code"] for lvl in RAIN_LEVELS]
+
+LEVEL_INFO = {
+    lvl["code"]: {
+        "color": lvl["color"],
+        "min_mm": lvl["min"],
+        "max_mm": None if lvl["max"] >= 9999 else lvl["max"],
+    }
+    for lvl in RAIN_LEVELS
+}
+
+ALERT_TEMPLATE = {
+    "NORMAL":  "Kondisi cuaca normal di {kec}.",
+    "WASPADA": "Hujan sedang di {kec}. Pantau perkembangan.",
+    "SIAGA":   "Hujan lebat di {kec}! Aktifkan protokol siaga banjir.",
+    "BAHAYA":  "CURAH HUJAN EKSTREM di {kec}! Risiko banjir dan longsor tinggi.",
+    "BENCANA": "🆘 DARURAT: Curah hujan katastrofik di {kec}! Evakuasi segera.",
+}
+
+
+def classify_level(rain_mm: float) -> str:
+    """Tentukan status level berdasarkan curah hujan (mm).
+    Menggunakan tabel yang sama persis dengan classify_rain() di
+    utils/helpers.py — keduanya membaca config.RAIN_LEVELS."""
+    for lvl in RAIN_LEVELS:
+        if lvl["min"] <= rain_mm < lvl["max"]:
+            return lvl["code"]
+    return RAIN_LEVELS[-1]["code"]
+
+
+def _at_least(level: str, floor_level: str) -> bool:
+    """True jika `level` sudah mencapai atau melampaui `floor_level`."""
+    return LEVELS.index(level) >= LEVELS.index(floor_level)
+
+
 @dataclass
 class Recommendation:
-    priority: str          # "SEGERA" | "PENTING" | "SIAGA" | "MONITOR"
+    priority: str          # = status level saat rekomendasi ini dipicu:
+                            # "NORMAL" | "WASPADA" | "SIAGA" | "BAHAYA" | "BENCANA"
     category: str          # "Pertanian" | "Infrastruktur" | "Evakuasi" | "Monitoring"
     action: str
     detail: str
@@ -253,123 +296,307 @@ def _default_profile(kec: str) -> dict:
     }
 
 
+def _is_longsor_prone(profile: dict) -> bool:
+    return ("longsor" in profile["main_risk"]
+            or profile["topografi"] in ("lereng-pegunungan", "lereng-sedang", "perbukitan-rendah", "bukit-sedang"))
+
+
+# ── SEKTOR 1: PERTANIAN ───────────────────────────────────────
+def _rec_pertanian(level: str, kecamatan: str, profile: dict) -> List[Recommendation]:
+    recs = []
+    luas = profile["sawah_luas"]
+    c = LEVEL_INFO[level]["color"]
+
+    if level == "NORMAL":
+        recs.append(Recommendation(
+            priority=level, category="Pertanian",
+            action="Monitoring Rutin Lahan",
+            detail=f"Kondisi curah hujan normal. Lakukan pemantauan rutin kondisi sawah "
+                   f"seluas {luas:,} ha di {kecamatan} sebagai bagian dari kesiapsiagaan dini.",
+            icon="🌱", color=c,
+        ))
+        return recs
+
+    if level == "WASPADA":
+        recs.append(Recommendation(
+            priority=level, category="Pertanian",
+            action="Periksa Kesiapan Drainase Sawah",
+            detail=f"Curah hujan mulai meningkat. Periksa kondisi saluran tersier dan kesiapan "
+                   f"pompa portable pada {luas:,} ha lahan sawah di {kecamatan} sebelum hujan memuncak.",
+            icon="💧", color=c,
+        ))
+        if profile["irigasi_kritis"]:
+            recs.append(Recommendation(
+                priority=level, category="Pertanian",
+                action="Cek Fungsi Pintu Air Irigasi Kritis",
+                detail="Pastikan pintu air dan jaringan irigasi utama berfungsi normal "
+                       "sebagai antisipasi kenaikan debit air pada level berikutnya.",
+                icon="🚰", color=c,
+            ))
+        return recs
+
+    if level == "SIAGA":
+        recs.append(Recommendation(
+            priority=level, category="Pertanian",
+            action="Percepatan Panen Dini",
+            detail=f"Lakukan panen lebih awal untuk sawah yang mendekati matang di {kecamatan} "
+                   f"({luas:,} ha). Hujan lebat berpotensi merendam padi dalam waktu dekat.",
+            icon="🌾", color=c,
+        ))
+        if profile["irigasi_kritis"]:
+            recs.append(Recommendation(
+                priority=level, category="Pertanian",
+                action="Buka Pintu Irigasi & Pompanisasi",
+                detail="Buka saluran drainase dan aktifkan pompa air untuk mencegah genangan "
+                       "lahan sawah. Cek kondisi pintu air irigasi di seluruh sub-petak sawah.",
+                icon="💧", color=c,
+            ))
+        if profile["coastal"]:
+            recs.append(Recommendation(
+                priority=level, category="Pertanian",
+                action="Perkuat Tanggul Tambak Pesisir",
+                detail="Perkuat tanggul tambak dan jaring budidaya ikan/udang. Pantau pasang "
+                       "surut dan potensi rob. Koordinasi dengan kelompok nelayan dan petambak.",
+                icon="🐟", color=c,
+            ))
+        return recs
+
+    if level == "BAHAYA":
+        recs.append(Recommendation(
+            priority=level, category="Pertanian",
+            action="Percepatan Panen Prioritas Tinggi",
+            detail=f"Curah hujan ekstrem — percepat panen seluruh sawah yang memungkinkan di "
+                   f"{kecamatan} ({luas:,} ha) sebelum genangan meluas.",
+            icon="🌾", color=c,
+        ))
+        recs.append(Recommendation(
+            priority=level, category="Pertanian",
+            action="Proteksi Komoditas & Pemindahan Peralatan",
+            detail="Pindahkan peralatan pertanian dan hasil panen ke lokasi aman. "
+                   "Dokumentasikan kondisi lahan untuk klaim asuransi pertanian jika diperlukan.",
+            icon="🚜", color=c,
+        ))
+        if profile["irigasi_kritis"]:
+            recs.append(Recommendation(
+                priority=level, category="Pertanian",
+                action="Pompanisasi Maksimal Jaringan Irigasi",
+                detail="Operasikan seluruh pompa pada kapasitas maksimal untuk mencegah "
+                       "kelebihan debit air merusak jaringan irigasi utama.",
+                icon="💧", color=c,
+            ))
+        if profile["coastal"]:
+            recs.append(Recommendation(
+                priority=level, category="Pertanian",
+                action="Penguatan Tanggul Tambak Darurat",
+                detail="Lakukan penguatan tanggul tambak secara darurat dan siapkan rencana "
+                       "evakuasi hasil budi daya jika tanggul berisiko jebol.",
+                icon="🐟", color=c,
+            ))
+        return recs
+
+    # BENCANA
+    recs.append(Recommendation(
+        priority=level, category="Pertanian",
+        action="Hentikan Aktivitas Pertanian — Fokus Keselamatan",
+        detail=f"Seluruh aktivitas pertanian di {kecamatan} dihentikan sementara. "
+               f"Keselamatan petani dan warga menjadi prioritas mutlak di atas penyelamatan aset. "
+               f"Dokumentasikan kerugian setelah kondisi aman untuk keperluan klaim.",
+        icon="🛑", color=c,
+    ))
+    return recs
+
+
+# ── SEKTOR 2: INFRASTRUKTUR ───────────────────────────────────
+def _rec_infrastruktur(level: str, kecamatan: str, profile: dict) -> List[Recommendation]:
+    recs = []
+    c = LEVEL_INFO[level]["color"]
+    longsor_prone = _is_longsor_prone(profile)
+    banjir_prone = "banjir" in profile["main_risk"] or "banjir_pesisir" in profile["main_risk"]
+
+    if level == "NORMAL":
+        recs.append(Recommendation(
+            priority=level, category="Infrastruktur",
+            action="Inspeksi Berkala Saluran Drainase",
+            detail="Lakukan inspeksi rutin kondisi saluran drainase dan sarana pengendali "
+                   "banjir sebagai bagian dari pemeliharaan preventif.",
+            icon="🔍", color=c,
+        ))
+        return recs
+
+    if level == "WASPADA":
+        if banjir_prone:
+            recs.append(Recommendation(
+                priority=level, category="Infrastruktur",
+                action="Pembersihan Saluran Drainase Preventif",
+                detail="Bersihkan saluran drainase dari sampah dan sedimentasi sebelum "
+                       "intensitas hujan meningkat lebih lanjut.",
+                icon="🧹", color=c,
+            ))
+        if longsor_prone:
+            recs.append(Recommendation(
+                priority=level, category="Infrastruktur",
+                action="Pemeriksaan Awal Kondisi Lereng",
+                detail="Periksa tanda-tanda awal pergerakan tanah pada lereng kritis, "
+                       "seperti retakan tanah atau rembesan air, sesuai arahan PVMBG.",
+                icon="⛰️", color=c,
+            ))
+        return recs
+
+    if level == "SIAGA":
+        if banjir_prone:
+            recs.append(Recommendation(
+                priority=level, category="Infrastruktur",
+                action="Aktivasi Pompa Banjir & Drainase",
+                detail="Aktifkan seluruh pompa pengendali banjir. Bersihkan saluran drainase "
+                       "dari sampah dan sedimentasi. Koordinasi dengan Dinas PU setempat.",
+                icon="🚧", color=c,
+            ))
+        if longsor_prone:
+            recs.append(Recommendation(
+                priority=level, category="Infrastruktur",
+                action="Pemeriksaan Retakan Tanah & Rambu Peringatan Lereng",
+                detail="Pasang rambu peringatan pada lereng kritis dan pantau kemunculan "
+                       "retakan berbentuk tapal kuda atau rembesan air bercampur lumpur.",
+                icon="⛰️", color=c,
+            ))
+        return recs
+
+    if level == "BAHAYA":
+        if banjir_prone:
+            recs.append(Recommendation(
+                priority=level, category="Infrastruktur",
+                action="Aktivasi Penuh Pompa Banjir & Koordinasi Darurat",
+                detail="Operasikan seluruh pompa banjir pada kapasitas maksimal. Koordinasi "
+                       "intensif dengan Dinas PU dan BPBD untuk penanganan titik genangan kritis.",
+                icon="🚧", color=c,
+            ))
+        if longsor_prone:
+            recs.append(Recommendation(
+                priority=level, category="Infrastruktur",
+                action="Penutupan Akses Zona Lereng Kritis",
+                detail="Larang aktivitas pertanian dan pemukiman sementara di zona lereng >30°. "
+                       "Pasang barrier dan lakukan monitoring pergerakan tanah secara intensif.",
+                icon="🚫", color=c,
+            ))
+        return recs
+
+    # BENCANA
+    recs.append(Recommendation(
+        priority=level, category="Infrastruktur",
+        action="Siaga Kerusakan Infrastruktur Kritis",
+        detail="Laporkan segera kerusakan tanggul, jembatan, atau saluran utama ke Dinas PU "
+               "dan BPBD. Utamakan penanganan titik yang mengancam keselamatan warga.",
+        icon="🆘", color=c,
+    ))
+    if longsor_prone:
+        recs.append(Recommendation(
+            priority=level, category="Infrastruktur",
+            action="Evakuasi Total Zona Lereng",
+            detail="Hentikan seluruh aktivitas di zona lereng kritis dan pastikan warga di "
+                   "sekitarnya telah dievakuasi ke tempat evakuasi yang aman.",
+            icon="⛰️", color=c,
+        ))
+    return recs
+
+
+# ── SEKTOR 3: EVAKUASI ────────────────────────────────────────
+# Mengacu pada uraian 2.1.14 & 5.14.2 — rekomendasi evakuasi baru
+# muncul mulai level SIAGA, dengan intensitas meningkat bertahap.
+def _rec_evakuasi(level: str, kecamatan: str, profile: dict) -> List[Recommendation]:
+    recs = []
+    c = LEVEL_INFO[level]["color"]
+
+    if level in ("NORMAL", "WASPADA"):
+        return recs  # belum diperlukan tindakan evakuasi
+
+    if level == "SIAGA":
+        recs.append(Recommendation(
+            priority=level, category="Evakuasi",
+            action="Peringatan Dini & Identifikasi Jalur Evakuasi",
+            detail=f"Sebarkan informasi peringatan dini kepada warga di bantaran sungai dan "
+                   f"lereng di {kecamatan}. Identifikasi awal jalur dan titik kumpul evakuasi terdekat.",
+            icon="📢", color=c,
+        ))
+        return recs
+
+    if level == "BAHAYA":
+        recs.append(Recommendation(
+            priority=level, category="Evakuasi",
+            action="Kesiapsiagaan Evakuasi Aktif",
+            detail=f"Siapkan jalur evakuasi menuju tempat evakuasi sementara di {kecamatan}. "
+                   f"Jauhi bantaran sungai dan zona rawan longsor pada wilayah berlereng. "
+                   f"Pantau intensif daerah dengan riwayat genangan.",
+            icon="🚸", color=c,
+        ))
+        return recs
+
+    # BENCANA — prioritas tertinggi, mengesampingkan rekomendasi sektor lain
+    recs.append(Recommendation(
+        priority=level, category="Evakuasi",
+        action="Evakuasi Segera — Prioritas Tertinggi",
+        detail=f"🆘 Laksanakan evakuasi segera menuju tempat evakuasi akhir di {kecamatan}. "
+               f"Jauhi bantaran sungai, lereng curam, dan area dengan riwayat longsor/banjir "
+               f"bandang. Gunakan jalur evakuasi bertanda resmi. Koordinasi dengan BPBD, dan "
+               f"libatkan Basarnas apabila kapasitas penanganan mandiri warga terlampaui.",
+        icon="🆘", color=c,
+    ))
+    return recs
+
+
+# ── SEKTOR 4: MONITORING ──────────────────────────────────────
+# Selalu ada di semua level (lintas level, lihat 5.14.2 poin 4),
+# namun intensitas & isi pesan meningkat sesuai level.
+def _rec_monitoring(level: str, kecamatan: str, forecast_7d: float, rain_mm: float) -> List[Recommendation]:
+    c = LEVEL_INFO[level]["color"]
+
+    detail_by_level = {
+        "NORMAL":  "Pemantauan rutin curah hujan setiap 3 jam sudah memadai pada kondisi ini.",
+        "WASPADA": "Tingkatkan frekuensi pemantauan curah hujan dan perbarui data secara berkala.",
+        "SIAGA":   "Lakukan pemantauan intensif dan pembaruan informasi cuaca setiap 1–2 jam.",
+        "BAHAYA":  "Lakukan pemantauan kontinu (real-time) terhadap perkembangan curah hujan dan dampaknya.",
+        "BENCANA": "Aktifkan pemantauan darurat 24 jam berkoordinasi penuh dengan BPBD dan BMKG.",
+    }
+
+    recs = [Recommendation(
+        priority=level, category="Monitoring",
+        action="Pemantauan Cuaca Berkala",
+        detail=f"{detail_by_level[level]} Koordinasi dengan BPBD Aceh Besar dan BMKG "
+               f"untuk update peringatan dini terkini di {kecamatan}.",
+        icon="🌦️", color=c,
+    )]
+
+    # Rekomendasi berbasis tren prakiraan — relevan di semua level (lintas level)
+    if forecast_7d > rain_mm * 1.2 and forecast_7d >= LEVEL_INFO["WASPADA"]["min_mm"]:
+        recs.append(Recommendation(
+            priority=level, category="Monitoring",
+            action="Pantau Tren Kenaikan Hujan 7 Hari ke Depan",
+            detail=f"Model memprediksi rata-rata curah hujan {forecast_7d:.1f} mm dalam 7 hari "
+                   f"ke depan, lebih tinggi dari kondisi aktual. Tingkatkan kewaspadaan dan "
+                   f"perbarui rencana mitigasi secara berkala.",
+            icon="📡", color=c,
+        ))
+    return recs
+
+
 # ── Recommendation Engine ─────────────────────────────────────
 def generate_recommendations(
     kecamatan: str,
     rain_mm: float,
     forecast_7d: float = 0.0,
 ) -> KecamatanMitigationPlan:
-    """Generate context-aware mitigation recommendations."""
+    """Bentuk rencana mitigasi berbasis status level klasifikasi curah hujan."""
 
     profile = KECAMATAN_PROFILE.get(kecamatan, _default_profile(kecamatan))
-    recs    = []
+    level = classify_level(rain_mm)
+    color = LEVEL_INFO[level]["color"]
+    alert = ALERT_TEMPLATE[level].format(kec=kecamatan)
 
-    # Determine level
-    if rain_mm < 10:
-        level, color, alert = "NORMAL", "#22c55e", f"Kondisi cuaca normal di {kecamatan}."
-    elif rain_mm < 30:
-        level, color, alert = "WASPADA", "#eab308", f"Hujan sedang di {kecamatan}. Pantau perkembangan."
-    elif rain_mm < 50:
-        level, color, alert = "SIAGA", "#f97316", f"Hujan lebat di {kecamatan}! Aktifkan protokol siaga banjir."
-    elif rain_mm < 100:
-        level, color, alert = "BAHAYA", "#ef4444", f"CURAH HUJAN EKSTREM di {kecamatan}! Risiko banjir dan longsor tinggi."
-    else:
-        level, color, alert = "BENCANA", "#7f1d1d", f"🆘 DARURAT: Curah hujan katastrofik di {kecamatan}! Evakuasi segera."
+    recs: List[Recommendation] = []
+    recs += _rec_pertanian(level, kecamatan, profile)
+    recs += _rec_infrastruktur(level, kecamatan, profile)
+    recs += _rec_evakuasi(level, kecamatan, profile)
+    recs += _rec_monitoring(level, kecamatan, forecast_7d, rain_mm)
 
-    # ── Agriculture Recommendations ─────────────────────────
-    if rain_mm >= 20:
-        recs.append(Recommendation(
-            priority="SEGERA", category="Pertanian",
-            action="Percepatan Panen Dini",
-            detail=f"Lakukan panen lebih awal untuk sawah yang mendekati matang di {kecamatan} "
-                   f"({profile['sawah_luas']:,} ha). Hujan {rain_mm:.0f} mm berpotensi merendam padi.",
-            icon="🌾", color="#eab308",
-        ))
-    if rain_mm >= 20 and profile["irigasi_kritis"]:
-        recs.append(Recommendation(
-            priority="PENTING", category="Pertanian",
-            action="Buka Pintu Irigasi & Pompanisasi",
-            detail="Buka saluran drainase dan aktifkan pompa air untuk mencegah genangan lahan sawah. "
-                   "Cek kondisi pintu air irigasi di seluruh sub-petak sawah.",
-            icon="💧", color="#06b6d4",
-        ))
-    if rain_mm >= 50:
-        recs.append(Recommendation(
-            priority="SEGERA", category="Pertanian",
-            action="Proteksi Komoditas & Pemindahan Alsintan",
-            detail="Pindahkan peralatan pertanian dan hasil panen ke lokasi aman. Dokumentasikan "
-                   "kondisi lahan untuk klaim asuransi pertanian jika diperlukan.",
-            icon="🚜", color="#f97316",
-        ))
-
-    # ── Flood Recommendations ────────────────────────────────
-    if "banjir" in profile["main_risk"] and rain_mm >= 20:
-        recs.append(Recommendation(
-            priority="SIAGA" if rain_mm < 50 else "SEGERA",
-            category="Infrastruktur",
-            action="Aktivasi Pompa Banjir & Drainase",
-            detail="Aktifkan seluruh pompa pengendali banjir. Bersihkan saluran drainase dari "
-                   "sampah dan sedimentasi. Koordinasi dengan Dinas PU setempat.",
-            icon="🚧", color="#3b82f6",
-        ))
-    if rain_mm >= 50:
-        recs.append(Recommendation(
-            priority="SEGERA", category="Evakuasi",
-            action="Peringatan Dini Masyarakat",
-            detail=f"Siarkan peringatan cuaca ekstrem via pengeras suara masjid dan media sosial. "
-                   f"Siapkan jalur evakuasi dan lokasi pengungsian sementara di {kecamatan}.",
-            icon="📢", color="#ef4444",
-        ))
-
-    # ── Landslide Recommendations ────────────────────────────
-    if "longsor" in profile["main_risk"] or profile["topografi"] in ("lereng-pegunungan", "lereng-sedang"):
-        if rain_mm >= 20:
-            recs.append(Recommendation(
-                priority="PENTING" if rain_mm < 50 else "SEGERA",
-                category="Infrastruktur",
-                action="Mitigasi Longsor & Penutupan Lereng",
-                detail="Pasang barrier dan geotextile di lereng kritis. Larang aktivitas pertanian "
-                       "dan pemukiman di zona lereng >30°. Monitoring pergerakan tanah real-time.",
-                icon="⛰️", color="#8b5cf6",
-            ))
-            recs.append(Recommendation(
-                priority="MONITOR", category="Infrastruktur",
-                action="Larangan Tanam di Lereng Kritis",
-                detail="Hentikan sementara aktivitas pertanian di lereng >25°. "
-                       "Koordinasi dengan penyuluh pertanian untuk alih lokasi tanam.",
-                icon="🚫", color="#f59e0b",
-            ))
-
-    # ── Coastal Recommendations ──────────────────────────────
-    if profile["coastal"] and rain_mm >= 20:
-        recs.append(Recommendation(
-            priority="PENTING", category="Pertanian",
-            action="Proteksi Tambak & Budidaya Pesisir",
-            detail="Perkuat tanggul tambak dan jaring budidaya ikan/udang. Pantau pasang surut "
-                   "dan potensi rob. Koordinasi dengan kelompok nelayan dan petambak.",
-            icon="🐟", color="#06b6d4",
-        ))
-
-    # ── Forecast-based Recommendations ──────────────────────
-    if forecast_7d > rain_mm * 1.2 and forecast_7d >= 20:
-        recs.append(Recommendation(
-            priority="MONITOR", category="Monitoring",
-            action="Pantau Tren Hujan 7 Hari ke Depan",
-            detail=f"AI memprediksi rata-rata curah hujan {forecast_7d:.1f} mm dalam 7 hari ke depan. "
-                   f"Tingkatkan frekuensi monitoring dan perbarui rencana mitigasi.",
-            icon="📡", color="#3b82f6",
-        ))
-
-    # ── Always: Monitoring ───────────────────────────────────
-    recs.append(Recommendation(
-        priority="MONITOR", category="Monitoring",
-        action="Pemantauan Cuaca Berkala",
-        detail="Pantau data curah hujan setiap 3 jam. Koordinasi dengan BPBD Aceh Besar dan BMKG "
-               "untuk update peringatan dini terkini.",
-        icon="🌦️", color="#94a3b8",
-    ))
-
-    # ── Smart Insight ────────────────────────────────────────
     insight = _generate_insight(kecamatan, rain_mm, forecast_7d, profile, level)
 
     return KecamatanMitigationPlan(
@@ -416,7 +643,7 @@ def generate_bulk_recommendations(
     forecast_7d_avg: float = 0.0,
 ) -> List[KecamatanMitigationPlan]:
     """Generate recommendations for all tracked kecamatan."""
-    import random, numpy as np
+    import random
     random.seed(int(rain_mm * 100))
     plans = []
     for kec in KECAMATAN_PROFILE:
