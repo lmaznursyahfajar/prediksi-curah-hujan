@@ -10,6 +10,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from config import RAIN_LEVELS
 from utils.helpers import classify_rain
+from services.recommendation import LEVELS, LEVEL_INFO
 
 
 def render_insight_cards(
@@ -23,16 +24,10 @@ def render_insight_cards(
     st.markdown("""
     <div style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-            <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:10px;
-                        width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px">
-                🧠
-            </div>
+            <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px">🧠</div>
             <div>
-                <p style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;
-                          color:#e2e8f0;margin:0">Insights Prediksi dan Monitoring</p>
-                <p style="font-size:12px;color:#64748b;margin:0">
-                    Analisis otomatis berdasarkan prediksi & data historis
-                </p>
+                <p style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:#0f172a;margin:0">Insights Prediksi dan Monitoring</p>
+                <p style="font-size:12px;color:#475569;margin:0">Analisis otomatis berdasarkan prediksi & data historis</p>
             </div>
         </div>
     </div>
@@ -40,31 +35,16 @@ def render_insight_cards(
 
     for ins in insights:
         st.markdown(f"""
-        <div style="background:linear-gradient(145deg,rgba(13,31,60,0.8),rgba(7,20,40,0.9));
-                    border:1px solid {ins['border']};border-radius:16px;padding:16px 20px;
-                    margin-bottom:12px;position:relative;overflow:hidden;">
-            <div style="position:absolute;top:0;left:0;right:0;height:2px;
-                        background:linear-gradient(90deg,{ins['color']},{ins['color']}44,transparent)"></div>
+        <div style="background:#ffffff;border:1px solid {ins['border']};border-radius:12px;padding:16px 20px;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+            <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,{ins['color']},{ins['color']}44,transparent)"></div>
             <div style="display:flex;align-items:flex-start;gap:14px">
-                <div style="background:{ins['color']}22;border:1px solid {ins['color']}44;
-                            border-radius:10px;width:40px;height:40px;display:flex;
-                            align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
-                    {ins['icon']}
-                </div>
+                <div style="background:{ins['color']}15;border:1px solid {ins['color']}33;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">{ins['icon']}</div>
                 <div style="flex:1">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                        <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;
-                                     font-size:14px;color:#e2e8f0">{ins['title']}</span>
-                        <span style="background:{ins['color']}22;color:{ins['color']};
-                                     border:1px solid {ins['color']}44;border-radius:6px;
-                                     padding:2px 8px;font-size:10px;font-weight:600;
-                                     font-family:'JetBrains Mono',monospace">
-                            {ins['badge']}
-                        </span>
+                        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:#0f172a">{ins['title']}</span>
+                        <span style="background:{ins['color']}15;color:{ins['color']};border:1px solid {ins['color']}33;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace">{ins['badge']}</span>
                     </div>
-                    <p style="font-size:13px;color:#94a3b8;margin:0;line-height:1.7">
-                        {ins['text']}
-                    </p>
+                    <p style="font-size:13px;color:#475569;margin:0;line-height:1.7">{ins['text']}</p>
                 </div>
             </div>
         </div>
@@ -154,42 +134,34 @@ def _generate_insights(df: pd.DataFrame, forecast: np.ndarray, rain_current: flo
 
     return insights
 
-
 # ── Render Recommendation Cards ───────────────────────────────
 def render_mitigation_cards(plan) -> None:
-    """Render mitigation recommendation cards from a plan object."""
-    priority_order = {"SEGERA": 0, "PENTING": 1, "SIAGA": 2, "MONITOR": 3}
-    sorted_recs = sorted(plan.recommendations, key=lambda r: priority_order.get(r.priority, 9))
+    """Render mitigation recommendation cards, diurutkan dari status level
+    paling mendesak (BENCANA) ke paling ringan (NORMAL) — selaras dengan
+    klasifikasi 5 level pada services/recommendation.py dan Bab 5.14.1 skripsi."""
+    # Urutan tampil: BENCANA → BAHAYA → SIAGA → WASPADA → NORMAL
+    priority_order = {lvl: i for i, lvl in enumerate(reversed(LEVELS))}
+    sorted_recs = sorted(plan.recommendations, key=lambda r: priority_order.get(r.priority, len(LEVELS)))
 
-    priority_colors = {
-        "SEGERA":  "#ef4444",
-        "PENTING": "#f97316",
-        "SIAGA":   "#eab308",
-        "MONITOR": "#3b82f6",
-    }
+    # Warna badge mengikuti warna resmi tiap level (satu sumber kebenaran: LEVEL_INFO)
+    priority_colors = {lvl: info["color"] for lvl, info in LEVEL_INFO.items()}
 
     for rec in sorted_recs:
-        p_color = priority_colors.get(rec.priority, "#64748b")
+        p_color = priority_colors.get(rec.priority, "#0f172a")
+        
+        # HTML dirapatkan (tanpa enter/baris kosong) agar Streamlit merendernya dengan sempurna
         st.markdown(f"""
-        <div style="background:rgba(13,31,60,0.7);border:1px solid {rec.color}33;
-                    border-left:3px solid {rec.color};border-radius:12px;
-                    padding:14px 18px;margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                <div style="display:flex;align-items:center;gap:10px">
-                    <span style="font-size:20px">{rec.icon}</span>
-                    <span style="font-family:'Space Grotesk',sans-serif;font-weight:600;
-                                 font-size:14px;color:#e2e8f0">{rec.action}</span>
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid {rec.color};border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <span style="font-size:22px">{rec.icon}</span>
+                    <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#0f172a">{rec.action}</span>
                 </div>
-                <div style="display:flex;gap:6px">
-                    <span style="background:{p_color}22;color:{p_color};border:1px solid {p_color}44;
-                                 border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;
-                                 font-family:'JetBrains Mono',monospace">{rec.priority}</span>
-                    <span style="background:{rec.color}11;color:{rec.color};border:1px solid {rec.color}33;
-                                 border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600">
-                        {rec.category}
-                    </span>
+                <div style="display:flex;gap:8px">
+                    <span style="background:{p_color}15;color:{p_color};border:1px solid {p_color}30;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace">{rec.priority}</span>
+                    <span style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600">{rec.category}</span>
                 </div>
             </div>
-            <p style="font-size:13px;color:#94a3b8;margin:0;line-height:1.7">{rec.detail}</p>
+            <p style="font-size:13.5px;color:#475569;margin:0;line-height:1.6;">{rec.detail}</p>
         </div>
         """, unsafe_allow_html=True)
